@@ -43,26 +43,26 @@ class RedisUploader:
             self.redis_config = config_data['redis']
 
     def upload_to_redis(self, data):
-        """
+        """ 
         Uploads data to Redis.
 
         Args:
-        - data (dict or list): A dictionary or a list containing the data to be uploaded to Redis.
-                               Keys represent Redis keys and values represent corresponding values.
+        - data (dict or list): A dictionary or a list containing the JSON data to be uploaded to Redis.
+                            Keys represent Redis JSON keys and values represent corresponding values.
 
         Returns:
         - bool: True if the upload is successful, False otherwise.
         """
+        self.redis_client.flushall()
         try:
-            if isinstance(data, dict):
-                for key, value in data.items():
-                    self.redis_client.set(key, json.dumps(value))
-            elif isinstance(data, list):
-                for idx, entry in enumerate(data):
-                    self.redis_client.set(str(idx), json.dumps(entry))
-            else:
-                raise TypeError("Data must be a dictionary or a list.")
+            for idx, item in enumerate(data):
+                # Ensure each item is a dictionary
+                if not isinstance(item, dict):
+                    raise TypeError(f"Item at index {idx} is not a dictionary.")
 
+                # Use the 'id' field as the key for each item
+                key = item['id']
+                self.redis_client.json().set(key, '.', json.dumps(item))
             return True
         except Exception as e:
             print(f"Error uploading data to Redis: {e}")
@@ -72,9 +72,7 @@ class RedisUploader:
         """
         Prints data from Redis. Visual to see if data went through correctly. 
         """
-
         try:
-            # Connect to Redis using the configured parameters
             conn_redis = redis.Redis(
                 host=self.redis_config['host'],
                 port=self.redis_config['port'],
@@ -82,16 +80,10 @@ class RedisUploader:
                 db=self.redis_config.get('db', 0)
             )
 
-            # Iterate over the keys in Redis
             for key in conn_redis.keys():
-                type_of_value = conn_redis.type(key)
-                if type_of_value == b'string':
-                    value = conn_redis.get(key)
-                elif type_of_value == b'list':
-                    value = conn_redis.lrange(key, 0, -1)  # Get all elements in the list
-                else:
-                    value = 'Unsupported data type'
-                print(f"Key: {key}, Value: {value}")
+                json_data = conn_redis.json().get(key)
+                print(f"Key: {key}, JSON Data: {json_data}")
+
         except Exception as e:
             print(f"Error accessing data from Redis: {e}")
 
@@ -106,16 +98,22 @@ class RedisUploader:
             # Initialize an empty list to store the data
             data = []
 
-            # Iterate over the keys in Redis, add locally
+            # Iterate over the keys in Redis
             for key in self.redis_client.keys():
-                value = self.redis_client.get(key)
-                value_dict = json.loads(value)
-                data.append(value_dict)
+                # Get the JSON data using the JSON.GET command
+                json_data = self.redis_client.json().get(key)
+                
+                # Load the JSON data into a dictionary
+                data_dict = json.loads(json_data)
 
-            # turn data into df
+                # Append the dictionary to the list
+                data.append(data_dict)
+
+            # Convert the list of dictionaries to a DataFrame
             df = pd.DataFrame(data)
             return df
-        
+                
         except Exception as e:
             print(f"Error converting Redis data to DataFrame: {e}")
-            return None
+
+

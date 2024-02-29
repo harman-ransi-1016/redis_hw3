@@ -17,7 +17,7 @@ class PlotHelper:
         - filename (str): Name of the JPEG file to save the plot. Default is 'crypto_introduction.jpg'.
 
         Returns:
-        - str: Filep ath of the saved plot.
+        - str: Filepath of the saved plot.
         """
 
         # Isolating data

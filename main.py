@@ -93,7 +93,7 @@ class MainProcess:
         PlotHelper.plot_top_10_table(dataframe)
     
 
-# Example usage
+# driver
 if __name__ == "__main__":
     main_process = MainProcess()
     main_process.gather_cmc_data()
